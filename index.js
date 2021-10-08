@@ -1,7 +1,6 @@
 import { Component } from "react";
 import ReactSelect from "react-select";
 import { Table, Column, List, AutoSizer } from "react-virtualized";
-import styled from "styled-components";
 import { css } from "glamor";
 import "react-virtualized/styles.css";
 
