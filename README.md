@@ -8,7 +8,7 @@ Install
 
 ## Usage
 Usage is pretty much like vanila react-select.
-Pass props as `grouped` if you want the list to be grouped. 
+Pass prop `grouped` if you want the list to be grouped. 
 Should work with both isMulti & single select
 Grouped options should be 
 ```
