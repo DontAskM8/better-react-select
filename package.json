@@ -1,0 +1,21 @@
+{
+  "name": "better-react-select",
+  "version": "1.0.0",
+  "description": "react-select 5.0 + react-virtualized",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "react-select",
+    "react-virtualized"
+  ],
+  "author": "DontAsk",
+  "license": "MIT",
+  "dependencies": {
+    "glamor": "^2.20.40",
+    "react": "^16.14.0",
+    "react-select": "^5.1.0",
+    "react-virtualized": "^9.22.3"
+  }
+}
