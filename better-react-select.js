@@ -1,6 +1,6 @@
 import { Component } from "react";
-import ReactSelect from "react-select";
-import { Table, Column, List, AutoSizer } from "react-virtualized";
+import ReactSelect, { components } from "react-select";
+import { List, AutoSizer } from "react-virtualized";
 import { css } from 'glamor'
 import 'react-virtualized/styles.css';
 
@@ -19,7 +19,7 @@ function processCssObject(obj = {}){
 	var _cssObj = {}
 	Object.keys(obj).forEach(function(x){
 		let processedName = normalizeCssName(x)
-		if(typeof obj[x] == "object"){
+		if(typeof obj[x] === "object"){
 			obj[x] = processCssObject(obj[x])
 		}
 		_cssObj[processedName] = obj[x]
@@ -32,125 +32,28 @@ export default class Select extends Component {
 		super()
 		this.MenuListRenderer = this.MenuListRenderer.bind(this)
 		this.MenuRenderer = this.MenuRenderer.bind(this)
+		this.DropdownIndicator = this.DropdownIndicator.bind(this)
+		this.Control = this.Control.bind(this)
 		this.rowRenderer = this.rowRenderer.bind(this)
 		this.state = {
 			extendedGroups: [],
-			search: ""
+			search: "",
+			selectedValues: [],
+			openMenu: false
 		}
 	}
 
-	componentDidMount() {
-		var self = this
-		self.setState({
-			list: self.props.options
-		})
-	}
-
-	rowRenderer({ key, index, isScrolling, isVisible, style,...bruh }, styles = {}, props) {
-		var self = this
-		var list = self.props.options
-		var currentSelected = props.getValue()
-		var filter = props.selectProps.inputValue.toLowerCase()
-		if(self.props.grouped){
-			currentSelected = currentSelected.map(x => x.value)
-			if(filter != ""){
-				list = list.map(x => ({
-					...x,
-					originalValue: x.value,
-					value: x.value.filter(x => x.label.toLowerCase().includes(filter))
-				}))
-
-				list = list.filter(x => {
-					return x.value.length != 0 || x.label.toLowerCase().includes(filter)
-				}).map(x => {
-					if(x.value.length == 0 && x.label.toLowerCase().includes(filter)){
-						return { ...x, value: x.originalValue}
-					}
-					return x
-				})
-
-			}
-
-			list = list
-			.filter(x => x.value.map(y => y.value)
-			.filter(z => !currentSelected.includes(z)).length != 0)
-			.map(x => [{
-				label: x.label,
-				value: x.label,
-				count: x.value.map(y => y.value).filter(z => !currentSelected.includes(z)).length,
-				groupLabel: x.value
-			}].concat(self.state.extendedGroups.includes(x.label) ? x.value : []))
-
-			if(list.length != 0){
-				list = list.reduce((a,b) => a.concat(b))
-			}
-
-			list = list.filter(x => !currentSelected.includes(x.value))
-		}
-
-		if(list[index]?.groupLabel){
-			Object.assign(styles, {
-				backgroundColor: "pink"
-			})
-		}
-
-		var _style = css({
-			...normalizeCss(styles),
-			...normalizeCss(style),
-			cursor: "pointer"
-		})
-
-		return (
-			<div key={key} style={style} {..._style} onClick={ () => {
-				if(list[index].groupLabel){
-					self.setState(function(prevState){
-						if(prevState.extendedGroups.includes(list[index].label)){
-							var newGroups = prevState.extendedGroups.filter(x => x != list[index].label)
-						}else{
-							var newGroups = prevState.extendedGroups.concat(list[index].label)
-						}
-						return {
-							extendedGroups: newGroups
-						}
-					})
-				}else{
-					if(props.isMulti){
-						let currentValue = props.getValue()
-						props.setValue(currentValue.concat(list[index]))
-					}else{
-						props.setValue(list[index])
-					}
-				}
-			} }>
-				{
-					(() => {
-						if(list[index]?.groupLabel){
-							return (
-								<>
-									<span onClick={ () => {
-										var currentSelected = props.getValue()
-										var allValues = list[index].groupLabel.filter(x => x.value)
-										var haventSelected = allValues.filter(x => !currentSelected.includes(x.value))
-										props.setValue(currentSelected.concat(haventSelected))
-									} }>( + ) </span>
-									<span>{list[index].label}</span>
-									<span style={{
-										right: "0",
-    								position: "absolute"
-									}}> ({list[index].count} ) { self.state.extendedGroups.includes(list[index].label) ? "  " : ".... " } </span>
-								</>
-							)
-						}
-						return list[index]?.label
-					})()
-				}
-	    </div>
-		)
-	}
+	// componentDidMount() {
+	// 	var self = this
+	// 	self.setState({
+	// 		list: self.props.options
+	// 	})
+	// }
 
 	MenuRenderer(props) {
 		var self = this
-		const { children, className, cx, getStyles, innerRef, innerProps } = props;
+		const { className, cx, getStyles, innerProps } = props;
+		console.log("Rendering menu")
 		return (
 			<div
 			 style={getStyles('menu', props)}
@@ -165,22 +68,24 @@ export default class Select extends Component {
 
 	MenuListRenderer(props) {
 		var self = this
+		console.log("Rendering menulist")
 
 		var currentSelected = props.getValue()
+		var _currentSelected = currentSelected
 		var filter = props.selectProps.inputValue.toLowerCase()
 		currentSelected = currentSelected.map(x => x.value)
 
 		let options = self.props.options
 		var rowCount = props.options.length
 		if(self.props.grouped){
-			if(filter != ""){
+			if(filter !== ""){
 				options = options.map(x => ({
 					...x,
 					originalValue: x.value,
 					value: x.value.filter(x => x.label.toLowerCase().includes(filter))
 				}))
-				.filter(x => x.value.length != 0 || x.label.toLowerCase().includes(filter)).map(x => {
-					if(x.value.length == 0 && x.label.toLowerCase().includes(filter)){
+				.filter(x => x.value.length !== 0 || x.label.toLowerCase().includes(filter)).map(x => {
+					if(x.value.length === 0 && x.label.toLowerCase().includes(filter)){
 						return { ...x, value: x.originalValue}
 					}
 					return x
@@ -189,21 +94,30 @@ export default class Select extends Component {
 
 			options = options
 			.filter(x => x.value.map(y => y.value)
-			.filter(z => !currentSelected.includes(z)).length != 0)
+			.filter(z => !currentSelected.includes(z)).length !== 0)
 			.map(x => [{
 				label: x.label,
-				value: x.label,
+				value: x.value.map(y => y.value),
 				count: x.value.map(y => y.value).filter(z => !currentSelected.includes(z)).length,
 				groupLabel: x.value
 			}].concat(self.state.extendedGroups.includes(x.label) ? x.value : []))
 
-			if(options.length != 0){
+			if(options.length !== 0){
 				options = options.reduce((a,b) => a.concat(b))
 			}
+
+			options = options.filter(x => !currentSelected.includes(x.value))
+
+			rowCount = options.length
+		}
+		else {
+			options = options.filter(x => {
+				return !currentSelected.includes(x.value) && x.label.toLowerCase().includes(filter)
+			})
 			rowCount = options.length
 		}
 
-		if(rowCount == 0){
+		if(rowCount === 0){
 			return props.selectProps.noOptionsMessage()
 		}
 
@@ -215,7 +129,9 @@ export default class Select extends Component {
 						width={350}
 						height={ 25*rowCount > 350 ? 350 : 25*rowCount }
 						rowCount={ rowCount }
-						rowRenderer={ (p) => self.rowRenderer(p, props.getStyles("option", props), props)}
+						rowRenderer={ (p) => {
+							return self.rowRenderer(p, props.getStyles("option", props), options, props, _currentSelected)
+						} }
 						rowHeight={25}
 						overscanRowCount={3}
 						style={ props.getStyles("menuList", props) }
@@ -232,18 +148,108 @@ export default class Select extends Component {
     );
 	}
 
+	rowRenderer(p, styles, options, props, currentSelectedProp) {
+		var self = this
+		var data = options[p.index]
+
+		if(options[p.index]?.groupLabel){
+			Object.assign(styles, {
+				backgroundColor: "pink"
+			})
+		}
+
+		var _style = css({
+			...normalizeCss(styles),
+			...normalizeCss(p.style),
+			cursor: "pointer"
+		})
+
+		return (
+			<div key={ p.key } style={ p.style } {..._style} onClick={ () => {
+				if(options[p.index].groupLabel){
+					self.setState(function(prevState){
+						if(prevState.extendedGroups.includes(options[p.index].label)){
+							var newGroups = prevState.extendedGroups.filter(x => x !== options[p.index].label)
+						}else{
+							var newGroups = prevState.extendedGroups.concat(options[p.index].label)
+						}
+						return {
+							extendedGroups: newGroups
+						}
+					})
+				}else{
+					if(props.isMulti){
+						let currentValue = currentSelectedProp//props.getValue()
+						props.setValue(currentValue.concat(options[p.index]))
+					}else{
+						props.setValue(options[p.index])
+					}
+				}
+			} }>
+				{
+					(() => {
+						if(options[p.index]?.groupLabel){
+							return (
+								<>
+									<span onClick={ () => {
+										var currentSelected = currentSelectedProp//props.getValue()
+										var allValues = options[p.index].groupLabel.filter(x => x.value)
+										var haventSelected = allValues.filter(x => !currentSelected.includes(x.value))
+										props.setValue(currentSelected.concat(haventSelected))
+									} }>( + ) </span>
+									<span>{options[p.index].label}</span>
+									<span style={{
+										right: "0",
+    								position: "absolute"
+									}}> ({options[p.index].count} ) { self.state.extendedGroups.includes(options[p.index].label) ? "  " : ".... " } </span>
+								</>
+							)
+						}
+						return options[p.index]?.label
+					})()
+				}
+	    </div>
+		)
+	}
+
 	MenuListRendererBlank() {
 		return <div></div>
 	}
 
+	Control(props) {
+		var self = this
+		props.innerProps.onClick = () => {
+			self.setState({ openMenu: !self.state.openMenu })
+		}
+		var selectedCount = props.getValue()
+		return <components.Control {...props}>{props.children}
+		<div style={{ color: "darkgrey" }} >{ selectedCount.length } items</div>
+		</components.Control>
+	}
+
+	ValueContainer() {
+		return <div></div>
+	}
+
+	DropdownIndicator(props){
+		var self = this
+		// props.innerProps.onMouseDown = () => {
+		// 	self.setState({ openMenu: !self.state.openMenu })
+		// }
+		return <components.DropdownIndicator {...props} ></components.DropdownIndicator>
+	}
+
 	render() {
 		var self = this
-		return <ReactSelect escapeClearsValue={false} {...self.props} filterOption={ ({label, data, value}, search) => {
+		return <ReactSelect escapeClearsValue={false} menuIsOpen={self.state.openMenu} {...self.props} filterOption={ ({label, data, value}, search) => {
 			return true
 		} }
 		 components={{
+			 Control: self.Control,
 			 Menu: self.MenuRenderer,
-			 MenuList: self.MenuListRendererBlank
+			 MenuList: self.MenuListRendererBlank,
+			 // DropdownIndicator: self.DropdownIndicator
+			 // ValueContainer: self.ValueContainer
 		}}></ReactSelect>
 	}
 }
